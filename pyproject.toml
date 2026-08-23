@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "otel-budget-check"
+version = "0.1.0"
+description = "Catch observability cost/cardinality regressions before merge"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+
+[project.scripts]
+otel-budget-check = "otel_budget_check.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

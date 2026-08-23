@@ -1,0 +1,86 @@
+name: 'otel-budget-check'
+description: >-
+  Catch observability cost and cardinality regressions before merge.
+  Captures OTLP emitted during your test run, compares against the baseline
+  from the default branch, and gates the PR on your telemetry budget.
+author: 'Founder OS'
+branding:
+  icon: 'activity'
+  color: 'purple'
+inputs:
+  test-command:
+    description: >-
+      The application's normal test command, e.g. "pytest" or "npm test".
+      OTLP env vars (OTEL_EXPORTER_OTLP_ENDPOINT, etc.) are injected
+      automatically so SDKs export to the built-in capture receiver.
+    required: true
+  baseline-path:
+    description: >-
+      Where the baseline capture is stored. Defaults to
+      .otel-budget-check/baseline.json. On the default branch this file is
+      written; on PRs it is read. Use a cache/persist action to keep it
+      across runs.
+    required: false
+    default: '.otel-budget-check/baseline.json'
+  current-path:
+    description: Where the current run's capture is written (artifact).
+    required: false
+    default: '.otel-budget-check/current.json'
+  traffic-multiplier:
+    description: >-
+      How many times larger production traffic is than the test run, used to
+      project monthly signal volume. Example: tests emit ~1s of traffic,
+      production does ~100x that per month.
+    required: false
+    default: '100'
+  unit-cost:
+    description: Backend unit cost in $ per 1,000,000 signals (metric points + spans).
+    required: false
+    default: '1.0'
+  budget:
+    description: >-
+      Monthly budget gate in $. The PR fails if the projected monthly cost
+      delta (or an unbounded dimension) exceeds this.
+    required: false
+    default: '50'
+  cardinality-limit:
+    description: >-
+      An attribute with more unique values than this is flagged as a
+      potentially unbounded dimension.
+    required: false
+    default: '100'
+  sample-interval:
+    description: >-
+      Seconds of test telemetry assumed per run, used to derive a per-second
+      rate for volume projection.
+    required: false
+    default: '5'
+  settle-seconds:
+    description: Seconds to wait after tests for SDK export flushes.
+    required: false
+    default: '3'
+  report-path:
+    description: Where to write the JSON report (artifact).
+    required: false
+    default: '.otel-budget-check/report.json'
+outputs:
+  gate-status:
+    description: 'PASS or FAIL'
+  cost-delta:
+    description: Estimated monthly cost delta in dollars.
+  cardinality-delta:
+    description: Change in unique series count.
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.test-command }}
+    - ${{ inputs.baseline-path }}
+    - ${{ inputs.current-path }}
+    - ${{ inputs.traffic-multiplier }}
+    - ${{ inputs.unit-cost }}
+    - ${{ inputs.budget }}
+    - ${{ inputs.cardinality-limit }}
+    - ${{ inputs.sample-interval }}
+    - ${{ inputs.settle-seconds }}
+    - ${{ inputs.report-path }}
